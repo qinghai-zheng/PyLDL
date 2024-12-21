@@ -1,4 +1,5 @@
 import os
+import sys
 import logging
 import requests
 
@@ -11,8 +12,9 @@ import tensorflow as tf
 
 from sklearn.preprocessing import MinMaxScaler
 
-from pyldl.algorithms.base import BaseLDL, BaseLE
 from pyldl.metrics import THE_SMALLER_THE_BETTER
+from pyldl.algorithms.base import BaseLDL, BaseLE
+from pyldl.algorithms.utils import proj, binaryzation
 
 
 class LDLEarlyStopping(keras.callbacks.Callback):
@@ -74,40 +76,42 @@ def load_dataset(name, dir='dataset'):
     return data['features'], data['labels']
 
 
-def random_missing(y, missing_rate=0.2):
+def random_missing(y, missing_rate=.9, weighted=False):
     if missing_rate <= 0. or missing_rate >= 1.:
         raise ValueError("Invalid missing rate, which should be in the range (0, 1).")
-    missing_mask = np.random.rand(*y.shape) < missing_rate
+    if weighted:
+        p = 1 - y
+        p /= np.sum(p)
+        size = int(y.size * missing_rate)
+        select = np.random.choice(y.size, size=size, replace=False, p=p.flatten())
+        missing_mask = np.zeros_like(y, dtype=bool)
+        missing_mask.flat[select] = True
+    else:
+        missing_mask = np.random.rand(*y.shape) < missing_rate
     missing_y = y.copy()
     missing_y[missing_mask] = np.nan
     missing_y[np.isnan(missing_y)] = 0.
     return missing_y, missing_mask
 
 
-def binaryzation(y, method='threshold', param=None):
-    r = np.argsort(np.argsort(y))
+sys.modules['pyldl.utils.proj'] = proj
+sys.modules['pyldl.utils.binaryzation'] = binaryzation
 
-    if method == 'threshold':
-        if param is None:
-            param = .5
-        elif not isinstance(param, float) or param < 0. or param >= 1.:
-            raise ValueError("Invalid param, when method is 'threshold', "
-                             "param should be a float in the range [0, 1).")
-        b = np.sort(y.T, axis=0)[::-1]
-        cs = np.cumsum(b, axis=0)
-        m = np.argmax(cs >= param, axis=0)
-        return np.where(r >= y.shape[1] - m.reshape(-1, 1) - 1, 1, 0)
 
-    elif method == 'topk':
-        if param is None:
-            param = y.shape[1] // 2
-        elif not isinstance(param, int) or param < 1 or param >= y.shape[1]:
-            raise ValueError("Invalid param, when method is 'topk', "
-                             "param should be an integer in the range [1, number_of_labels).")
-        return np.where(r >= y.shape[1] - param, 1, 0)
-
-    else:
-        raise ValueError("Invalid method, which should be 'threshold' or 'topk'.")
+def emphasize(y, rate=.5, **kwargs):
+    from scipy.special import softmax
+    emphasized_y = y.copy()
+    l = binaryzation(y, **kwargs)
+    indices = np.random.choice(y.shape[0], size=int(y.shape[0] * rate), replace=False)
+    for i in indices:
+        n_pos = int(np.ceil(l[i].sum() / 2))
+        where = np.where(l[i] == 1)[0]
+        l[i] = 0
+        select = np.random.choice(where.size, size=n_pos, replace=False)
+        l[i, where[select]] = 1
+        emphasized_y[i] += l[i]
+        emphasized_y[i] = softmax(emphasized_y[i])
+    return emphasized_y
 
 
 def artificial(X, a=1., b=.5, c=.2, d=1.,

@@ -9,6 +9,19 @@ from pyldl.algorithms.base import BaseDeepLDL, BaseAdam
 
 
 class LDL_SCL(BaseAdam, BaseDeepLDL):
+    """:class:`LDL-SCL <pyldl.algorithms.LDL_SCL>` is proposed in paper :cite:`2018:zheng`.
+
+    :term:`Adam` is used as optimizer.
+
+    See also:
+
+    .. bibliography:: ldl_references.bib
+        :filter: False
+        :labelprefix: LDL-SCL-
+        :keyprefix: ldl-scl-
+
+        2021:jia
+    """
 
     def __init__(self, n_hidden=None, n_latent=None, random_state=None):
         super().__init__(n_hidden, n_latent, random_state)

@@ -2,7 +2,6 @@ import numpy as np
 
 from scipy.spatial.distance import pdist
 
-from sklearn.base import BaseEstimator
 from sklearn.svm import LinearSVC, SVR
 from sklearn.naive_bayes import GaussianNB
 from sklearn.multioutput import MultiOutputRegressor
@@ -12,12 +11,16 @@ from pyldl.algorithms.base import BaseLDL
 
 
 class _PT(BaseLDL):
+    """Base class for :class:`pyldl.algorithms.PT_Bayes` and :class:`pyldl.algorithms.PT_SVM`.
+
+    PT refers to *problem transformation*.
+    """
 
     def _preprocessing(self, X, y):
         m, c = y.shape[0], y.shape[1]
         Xr = np.repeat(X, c, axis=0)
         yr = np.tile(np.arange(c), m)
-        p = y.reshape(-1) / m
+        p = y.reshape(-1) / np.sum(y)
 
         select = np.random.choice(m*c, size=m*c, p=p)
         return Xr[select], yr[select]
@@ -37,18 +40,24 @@ class _PT(BaseLDL):
 
 
 class PT_Bayes(_PT):
+    """:class:`PT-Bayes <pyldl.algorithms.PT_Bayes>` is proposed in paper :cite:`2016:geng`.
+    """
 
     def _get_default_model(self):
         return GaussianNB(var_smoothing=0.1)
 
 
 class PT_SVM(_PT):
+    """:class:`PT-SVM <pyldl.algorithms.PT_SVM>` is proposed in paper :cite:`2016:geng`.
+    """
 
     def _get_default_model(self):
         return CalibratedClassifierCV(LinearSVC())
 
 
 class LDSVR(_PT):
+    """:class:`LDSVR <pyldl.algorithms.LDSVR>` is proposed in paper :cite:`2015:geng`.
+    """
 
     def _preprocessing(self, X, y):
         y = -np.log(1. / np.clip(y, 1e-7, 1. - 1e-7) - 1.)

@@ -73,6 +73,8 @@ def visualization(X, grade, count, grade_real=None, count_real=None,
 
 
 class LDL_ACNE(BaseGD, BaseDeepLDL):
+    """This approach is proposed in paper :cite:`2019:wu`.
+    """
 
     hayashi = [0] + [0 for _ in range(5)] + [1 for _ in range(15)] + \
         [2 for _ in range(30)] + [3 for _ in range(15)]
@@ -112,8 +114,16 @@ class LDL_ACNE(BaseGD, BaseDeepLDL):
         self._alpha = alpha
         return super().fit(X, y, **kwargs)
 
-    def predict(self, X, return_grades=False):
-        y_pred, grades1 = self._call(X)
+    def predict(self, X, batch_size=None, return_grades=False):
+
+        if batch_size is None:
+            batch_size = X.shape[0]
+
+        y_pred = np.zeros((X.shape[0], n_counts + 1))
+        grades1 = np.zeros((X.shape[0], n_grades))
+        for i in range(0, X.shape[0], batch_size):
+            y_pred[i:i + batch_size], grades1[i:i + batch_size] = self._call(X[i:i + batch_size])
+
         if not return_grades:
             return y_pred
         else:

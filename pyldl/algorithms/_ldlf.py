@@ -7,6 +7,19 @@ from pyldl.algorithms.base import BaseDeepLDL, BaseAdam
 
 
 class LDLF(BaseAdam, BaseDeepLDL):
+    """:class:`LDLF <pyldl.algorithms.LDLF>` is proposed in paper :cite:`2017:shen`.
+
+    The algorithms employs deep neural decision forests. See also:
+
+    .. bibliography:: ldl_references.bib
+        :filter: False
+        :labelprefix: LDLF-
+        :keyprefix: ldlf-
+
+        2015:kontschieder
+
+    :term:`Adam` is used as the optimizer.
+    """
 
     def __init__(self, n_estimators=5, n_depth=6, n_hidden=64, n_latent=64, random_state=None):
         super().__init__(n_hidden, n_latent, random_state)
@@ -37,7 +50,7 @@ class LDLF(BaseAdam, BaseDeepLDL):
         return mu
 
     def _get_default_model(self):
-        return keras.Sequential([keras.layers.InputLayer(input_shape=self._n_features),
+        return keras.Sequential([keras.layers.InputLayer(input_shape=(self._n_features, )),
                                  keras.layers.Dense(self._n_hidden, activation='sigmoid'),
                                  keras.layers.Dense(self._n_latent, activation="sigmoid")])
 
